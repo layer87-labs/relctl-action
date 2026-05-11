@@ -1,0 +1,117 @@
+name: "Setup relctl"
+description: "Download and install the relctl binary from layer87-labs/relctl GitHub releases"
+branding:
+  color: blue
+  icon: package
+
+inputs:
+  relctl-version:
+    required: false
+    description: "relctl version to install (e.g. '1.2.3' or 'latest')"
+    default: "latest"
+  github-token:
+    required: true
+    description: "GitHub token used for API calls (secrets.GITHUB_TOKEN)"
+
+runs:
+  using: "composite"
+  steps:
+    # ──────────────────────────────────────────────────────────────────────────
+    # Step 1 – Resolve version tag
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: Resolve relctl version
+      id: resolve-version
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_VERSION: ${{ inputs.relctl-version }}
+      run: |
+        if [ "${INPUT_VERSION}" = "latest" ]; then
+          VERSION=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/layer87-labs/relctl/releases/latest" \
+            | grep '"tag_name"' \
+            | sed 's/.*"tag_name": *"\(.*\)".*/\1/')
+        else
+          VERSION="v${INPUT_VERSION#v}"
+        fi
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+        echo "version_bare=${VERSION#v}" >> "$GITHUB_OUTPUT"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Step 2 – Detect platform
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: Detect platform
+      id: platform
+      shell: bash
+      run: |
+        OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        ARCH="$(uname -m)"
+        case "${ARCH}" in
+          x86_64)  ARCH="amd64" ;;
+          aarch64|arm64) ARCH="arm64" ;;
+          *)
+            echo "Unsupported architecture: ${ARCH}" >&2
+            exit 1
+            ;;
+        esac
+        case "${OS}" in
+          linux|darwin) ;;
+          *)
+            echo "Unsupported OS: ${OS}" >&2
+            exit 1
+            ;;
+        esac
+        echo "os=${OS}"       >> "$GITHUB_OUTPUT"
+        echo "arch=${ARCH}"   >> "$GITHUB_OUTPUT"
+        echo "suffix=${OS}-${ARCH}" >> "$GITHUB_OUTPUT"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Step 3 – Download binary + checksum and verify
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: Download relctl and verify checksum
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        VERSION: ${{ steps.resolve-version.outputs.version }}
+        VERSION_BARE: ${{ steps.resolve-version.outputs.version_bare }}
+        SUFFIX: ${{ steps.platform.outputs.suffix }}
+      run: |
+        BASE_URL="https://github.com/layer87-labs/relctl/releases/download/${VERSION}"
+        BINARY_NAME="relctl_${VERSION_BARE}_${SUFFIX}"
+        CHECKSUM_FILE="sha256sum.txt"
+
+        INSTALL_DIR="${RUNNER_TEMP}/relctl"
+        mkdir -p "${INSTALL_DIR}"
+
+        echo "Downloading ${BINARY_NAME} from ${BASE_URL} ..."
+        curl -fsSL \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -o "${INSTALL_DIR}/${BINARY_NAME}" \
+          "${BASE_URL}/${BINARY_NAME}"
+
+        echo "Downloading checksum file ..."
+        curl -fsSL \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -o "${INSTALL_DIR}/${CHECKSUM_FILE}" \
+          "${BASE_URL}/${CHECKSUM_FILE}"
+
+        echo "Verifying SHA256 checksum ..."
+        cd "${INSTALL_DIR}"
+        # Extract only the line for our binary and verify
+        grep "${BINARY_NAME}" "${CHECKSUM_FILE}" | sha256sum --check --strict -
+
+        chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+        # Create a stable symlink named 'relctl'
+        ln -sf "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/relctl"
+
+        echo "${INSTALL_DIR}" >> "$GITHUB_PATH"
+        echo "relctl installed at ${INSTALL_DIR}/relctl (-> ${BINARY_NAME})"
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Step 4 – Smoke-test
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: Verify relctl installation
+      shell: bash
+      run: relctl --version
