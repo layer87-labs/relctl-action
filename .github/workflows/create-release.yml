@@ -1,0 +1,74 @@
+name: Create release
+
+on:
+  workflow_call:
+    inputs:
+      relctl-version:
+        description: "relctl version to install (e.g. '1.2.3' or 'latest')"
+        default: "latest"
+        required: false
+        type: string
+    secrets:
+      token:
+        required: true
+    outputs:
+      release-id:
+        description: "ID of the created GitHub release"
+        value: ${{ jobs.generate_infos.outputs.release-id }}
+      sha:
+        description: "SHA of the merge commit"
+        value: ${{ jobs.generate_infos.outputs.sha }}
+      sha-short:
+        description: "Short SHA of the merge commit"
+        value: ${{ jobs.generate_infos.outputs.sha-short }}
+      owner:
+        description: "Repository owner"
+        value: ${{ jobs.generate_infos.outputs.owner }}
+      repo:
+        description: "Repository name"
+        value: ${{ jobs.generate_infos.outputs.repo }}
+      version:
+        description: "Released version"
+        value: ${{ jobs.generate_infos.outputs.version }}
+      latest-version:
+        description: "Latest released version (before this release)"
+        value: ${{ jobs.generate_infos.outputs.latest-version }}
+      next-version:
+        description: "The version that was released"
+        value: ${{ jobs.generate_infos.outputs.next-version }}
+
+jobs:
+  generate_infos:
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID }}
+      sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
+      sha-short: ${{ steps.pr-info.outputs.RELCTL_PR_SHA_SHORT }}
+      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER }}
+      repo: ${{ steps.pr-info.outputs.RELCTL_REPO }}
+      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION }}
+      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION }}
+      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup relctl
+        uses: layer87-labs/relctl-action@main
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+
+      - name: Collect PR infos
+        id: pr-info
+        run: relctl pr info --merge-commit-sha ${{ github.sha }} > $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_TOKEN: ${{ secrets.token }}
+
+      - name: Create release
+        id: create-release
+        run: relctl release create --merge-sha ${{ github.sha }} >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_TOKEN: ${{ secrets.token }}

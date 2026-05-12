@@ -1,0 +1,81 @@
+name: Generate build infos for PR
+
+on:
+  workflow_call:
+    inputs:
+      prnumber:
+        description: "Pull request number (optional, auto-detected from event)"
+        default: ${{ github.event.pull_request.number }}
+        required: false
+        type: string
+      relctl-version:
+        description: "relctl version to install (e.g. '1.2.3' or 'latest')"
+        default: "latest"
+        required: false
+        type: string
+    secrets:
+      token:
+        required: true
+    outputs:
+      pr:
+        description: "Pull request number"
+        value: ${{ jobs.generate_infos.outputs.pr }}
+      sha:
+        description: "SHA of the PR head commit"
+        value: ${{ jobs.generate_infos.outputs.sha }}
+      sha-short:
+        description: "Short SHA of the PR head commit"
+        value: ${{ jobs.generate_infos.outputs.sha-short }}
+      branch:
+        description: "PR source branch name"
+        value: ${{ jobs.generate_infos.outputs.branch }}
+      owner:
+        description: "Repository owner"
+        value: ${{ jobs.generate_infos.outputs.owner }}
+      repo:
+        description: "Repository name"
+        value: ${{ jobs.generate_infos.outputs.repo }}
+      patch-level:
+        description: "Detected semver patch level (major/minor/patch)"
+        value: ${{ jobs.generate_infos.outputs.patch-level }}
+      version:
+        description: "Build version string (next-version-pr-<number>)"
+        value: ${{ jobs.generate_infos.outputs.version }}
+      latest-version:
+        description: "Latest released version"
+        value: ${{ jobs.generate_infos.outputs.latest-version }}
+      next-version:
+        description: "Next release version derived from PR labels"
+        value: ${{ jobs.generate_infos.outputs.next-version }}
+
+jobs:
+  generate_infos:
+    runs-on: ubuntu-latest
+    outputs:
+      pr: ${{ steps.pr-info.outputs.RELCTL_PR }}
+      sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
+      sha-short: ${{ steps.pr-info.outputs.RELCTL_PR_SHA_SHORT }}
+      branch: ${{ steps.pr-info.outputs.RELCTL_PR_BRANCH }}
+      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER }}
+      repo: ${{ steps.pr-info.outputs.RELCTL_REPO }}
+      patch-level: ${{ steps.pr-info.outputs.RELCTL_PATCH_LEVEL }}
+      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION }}-pr-${{ steps.pr-info.outputs.RELCTL_PR }}
+      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION }}
+      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup relctl
+        uses: layer87-labs/relctl-action@main
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+
+      - name: Collect PR infos
+        id: pr-info
+        run: relctl pr info -n ${{ inputs.prnumber }} > $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_TOKEN: ${{ secrets.token }}

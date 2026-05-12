@@ -12,6 +12,10 @@ inputs:
   github-token:
     required: true
     description: "GitHub token used for API calls (secrets.GITHUB_TOKEN)"
+  run:
+    required: false
+    description: "Optional relctl command to execute after installation (e.g. 'relctl pr info'). Output variables set by relctl (RELCTL_*) are written to GITHUB_ENV and GITHUB_OUTPUT automatically."
+    default: ""
 
 runs:
   using: "composite"
@@ -115,3 +119,13 @@ runs:
     - name: Verify relctl installation
       shell: bash
       run: relctl --version
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Step 5 – Optional command execution
+    # ──────────────────────────────────────────────────────────────────────────
+    - name: Run relctl command
+      if: ${{ inputs.run != '' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: ${{ inputs.run }}
