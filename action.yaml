@@ -103,8 +103,9 @@ runs:
 
         echo "Verifying SHA256 checksum ..."
         cd "${INSTALL_DIR}"
-        # Extract only the line for our binary and verify
-        grep "${BINARY_NAME}" "${CHECKSUM_FILE}" | sha256sum --check --strict -
+        # Extract only the exact binary line (end-of-line anchor prevents matching
+        # sibling files like .bundle or .sbom.spdx.json that share the same prefix)
+        grep -E "  ${BINARY_NAME}$" "${CHECKSUM_FILE}" | sha256sum --check --strict -
 
         chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
         # Create a stable symlink named 'relctl'
