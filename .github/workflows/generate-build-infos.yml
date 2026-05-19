@@ -13,6 +13,11 @@ on:
         default: "latest"
         required: false
         type: string
+      runner:
+        description: "GitHub Actions runner label"
+        default: "ubuntu-latest"
+        required: false
+        type: string
     secrets:
       token:
         required: true
@@ -50,7 +55,7 @@ on:
 
 jobs:
   generate_infos:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     outputs:
       pr: ${{ steps.pr-info.outputs.RELCTL_PR }}
       sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
