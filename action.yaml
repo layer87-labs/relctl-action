@@ -17,6 +17,44 @@ inputs:
     description: "Optional relctl command to execute after installation (e.g. 'relctl pr info'). Output variables set by relctl (RELCTL_*) are written to GITHUB_ENV and GITHUB_OUTPUT automatically."
     default: ""
 
+outputs:
+  RELCTL_VERSION:
+    description: "The calculated release version (CalVer or semver)"
+    value: ${{ steps.run-relctl.outputs.RELCTL_VERSION }}
+  RELCTL_NEXT_VERSION:
+    description: "Alias for RELCTL_VERSION"
+    value: ${{ steps.run-relctl.outputs.RELCTL_NEXT_VERSION }}
+  RELCTL_RELEASE_ID:
+    description: "GitHub Release ID created by relctl release create"
+    value: ${{ steps.run-relctl.outputs.RELCTL_RELEASE_ID }}
+  RELCTL_PR:
+    description: "Pull request number"
+    value: ${{ steps.run-relctl.outputs.RELCTL_PR }}
+  RELCTL_PR_SHA:
+    description: "Pull request commit SHA"
+    value: ${{ steps.run-relctl.outputs.RELCTL_PR_SHA }}
+  RELCTL_PR_SHA_SHORT:
+    description: "Pull request commit SHA (short)"
+    value: ${{ steps.run-relctl.outputs.RELCTL_PR_SHA_SHORT }}
+  RELCTL_PR_BRANCH:
+    description: "Pull request branch name"
+    value: ${{ steps.run-relctl.outputs.RELCTL_PR_BRANCH }}
+  RELCTL_MERGE_COMMIT_SHA:
+    description: "Merge commit SHA"
+    value: ${{ steps.run-relctl.outputs.RELCTL_MERGE_COMMIT_SHA }}
+  RELCTL_OWNER:
+    description: "Repository owner"
+    value: ${{ steps.run-relctl.outputs.RELCTL_OWNER }}
+  RELCTL_REPO:
+    description: "Repository name"
+    value: ${{ steps.run-relctl.outputs.RELCTL_REPO }}
+  RELCTL_PATCH_LEVEL:
+    description: "Semver patch level (major/minor/bugfix)"
+    value: ${{ steps.run-relctl.outputs.RELCTL_PATCH_LEVEL }}
+  RELCTL_LATEST_VERSION:
+    description: "Latest existing release version"
+    value: ${{ steps.run-relctl.outputs.RELCTL_LATEST_VERSION }}
+
 runs:
   using: "composite"
   steps:
@@ -125,6 +163,7 @@ runs:
     # Step 5 – Optional command execution
     # ──────────────────────────────────────────────────────────────────────────
     - name: Run relctl command
+      id: run-relctl
       if: ${{ inputs.run != '' }}
       shell: bash
       env:
