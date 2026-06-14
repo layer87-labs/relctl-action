@@ -8,6 +8,11 @@ on:
         default: "latest"
         required: false
         type: string
+      version-scheme:
+        description: "Version scheme to use (e.g. 'semver' or 'calver')"
+        default: "semver"
+        required: false
+        type: string
       runner:
         description: "GitHub Actions runner label"
         default: "ubuntu-latest"
@@ -46,34 +51,43 @@ jobs:
   generate_infos:
     runs-on: ${{ inputs.runner }}
     outputs:
-      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID }}
+      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID || steps.create-release-calver.outputs.RELCTL_RELEASE_ID }}
       sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
       sha-short: ${{ steps.pr-info.outputs.RELCTL_PR_SHA_SHORT }}
-      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER }}
-      repo: ${{ steps.pr-info.outputs.RELCTL_REPO }}
-      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION }}
-      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION }}
-      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION }}
+      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER || steps.create-release-calver.outputs.RELCTL_OWNER }}
+      repo: ${{ steps.pr-info.outputs.RELCTL_REPO || steps.create-release-calver.outputs.RELCTL_REPO }}
+      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION }}
+      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION || steps.create-release-calver.outputs.RELCTL_LATEST_VERSION }}
+      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup relctl
+      - name: Setup relctl and collect PR infos (semver)
+        if: inputs.version-scheme == 'semver'
         uses: layer87-labs/relctl-action@main
+        id: pr-info
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
+          run: relctl pr info --merge-commit-sha ${{ github.sha }} > $GITHUB_STEP_SUMMARY
 
-      - name: Collect PR infos
-        id: pr-info
-        run: relctl pr info --merge-commit-sha ${{ github.sha }} > $GITHUB_STEP_SUMMARY
-        env:
-          GITHUB_TOKEN: ${{ secrets.token }}
-
-      - name: Create release
+      - name: Create release (semver)
+        if: inputs.version-scheme == 'semver'
+        uses: layer87-labs/relctl-action@main
         id: create-release
-        run: relctl release create --merge-sha ${{ github.sha }} >> $GITHUB_STEP_SUMMARY
-        env:
-          GITHUB_TOKEN: ${{ secrets.token }}
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+          run: relctl release create --merge-sha ${{ github.sha }} >> $GITHUB_STEP_SUMMARY
+
+      - name: Create release (calver)
+        if: inputs.version-scheme == 'calver'
+        uses: layer87-labs/relctl-action@main
+        id: create-release-calver
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+          run: relctl release create --version-scheme calver >> $GITHUB_STEP_SUMMARY
