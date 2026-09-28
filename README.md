@@ -108,6 +108,7 @@ jobs:
 | Input            | Required | Default    | Description               |
 | ---------------- | -------- | ---------- | ------------------------- |
 | `relctl-version` | no       | `"latest"` | relctl version to install |
+| `version-scheme` | no       | `"semver"` | Version scheme to use: `"semver"`, `"calver"` or `"conventional-commits"` |
 
 #### Outputs
 

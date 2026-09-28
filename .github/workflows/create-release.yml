@@ -9,7 +9,7 @@ on:
         required: false
         type: string
       version-scheme:
-        description: "Version scheme to use (e.g. 'semver' or 'calver')"
+        description: "Version scheme to use ('semver', 'calver' or 'conventional-commits')"
         default: "semver"
         required: false
         type: string
@@ -51,14 +51,14 @@ jobs:
   generate_infos:
     runs-on: ${{ inputs.runner }}
     outputs:
-      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID || steps.create-release-calver.outputs.RELCTL_RELEASE_ID }}
+      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID || steps.create-release-calver.outputs.RELCTL_RELEASE_ID || steps.create-release-conventional-commits.outputs.RELCTL_RELEASE_ID }}
       sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
       sha-short: ${{ steps.pr-info.outputs.RELCTL_PR_SHA_SHORT }}
-      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER || steps.create-release-calver.outputs.RELCTL_OWNER }}
-      repo: ${{ steps.pr-info.outputs.RELCTL_REPO || steps.create-release-calver.outputs.RELCTL_REPO }}
-      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION }}
-      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION || steps.create-release-calver.outputs.RELCTL_LATEST_VERSION }}
-      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION }}
+      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER || steps.create-release-calver.outputs.RELCTL_OWNER || steps.create-release-conventional-commits.outputs.RELCTL_OWNER }}
+      repo: ${{ steps.pr-info.outputs.RELCTL_REPO || steps.create-release-calver.outputs.RELCTL_REPO || steps.create-release-conventional-commits.outputs.RELCTL_REPO }}
+      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_VERSION }}
+      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION || steps.create-release-calver.outputs.RELCTL_LATEST_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_LATEST_VERSION }}
+      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_VERSION }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v6
@@ -91,3 +91,12 @@ jobs:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
           run: relctl release create --version-scheme calver >> $GITHUB_STEP_SUMMARY
+
+      - name: Create release (conventional-commits)
+        if: inputs.version-scheme == 'conventional-commits'
+        uses: layer87-labs/relctl-action@main
+        id: create-release-conventional-commits
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+          run: relctl release create --version-scheme conventional-commits >> $GITHUB_STEP_SUMMARY
