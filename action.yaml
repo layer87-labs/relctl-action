@@ -7,7 +7,7 @@ branding:
 inputs:
   relctl-version:
     required: false
-    description: "relctl version to install (e.g. '1.2.3' or 'latest')"
+    description: "relctl version to install (e.g. '1.2.3', 'v1.2.3' or 'latest'); the release tag is resolved with or without a 'v' prefix"
     default: "latest"
   github-token:
     required: true
@@ -76,7 +76,26 @@ runs:
             | grep '"tag_name"' \
             | sed 's/.*"tag_name": *"\(.*\)".*/\1/')
         else
-          VERSION="v${INPUT_VERSION#v}"
+          # Release tags may or may not carry a "v" prefix: ask the API which
+          # candidate exists and use the real tag.
+          BARE="${INPUT_VERSION#v}"
+          VERSION=""
+          TRIED=""
+          for CANDIDATE in "${BARE}" "v${BARE}"; do
+            TRIED="${TRIED:+${TRIED}, }${CANDIDATE}"
+            STATUS=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/layer87-labs/relctl/releases/tags/${CANDIDATE}") || STATUS="000"
+            if [ "${STATUS}" = "200" ]; then
+              VERSION="${CANDIDATE}"
+              break
+            fi
+          done
+          if [ -z "${VERSION}" ]; then
+            echo "::error::No relctl release found for version '${INPUT_VERSION}' (tried tags: ${TRIED})" >&2
+            exit 1
+          fi
         fi
         echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
         echo "version_bare=${VERSION#v}" >> "$GITHUB_OUTPUT"
