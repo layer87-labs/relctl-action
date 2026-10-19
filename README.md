@@ -38,12 +38,12 @@ The `run` input is optional. When set, relctl is installed and the command is ex
 | Input            | Required | Default    | Description                                                               |
 | ---------------- | -------- | ---------- | ------------------------------------------------------------------------- |
 | `github-token`   | **yes**  | —          | GitHub token used for release API calls (`${{ secrets.GITHUB_TOKEN }}`)   |
-| `relctl-version` | no       | `"latest"` | relctl version to install. Use `"latest"` or a semver tag like `"1.2.3"`. |
+| `relctl-version` | no       | `"latest"` | relctl version to install: `"latest"`, `"1.2.3"` or `"v1.2.3"` (matched against release tags with or without a `v` prefix). |
 | `run`            | no       | `""`       | Optional relctl command to execute after installation.                    |
 
 ### What the action does
 
-1. **Resolves the version** — if `"latest"`, queries the GitHub Releases API to find the most recent tag.
+1. **Resolves the version** — if `"latest"`, queries the GitHub Releases API to find the most recent tag; an explicit version is looked up as a release tag with and without a `v` prefix, and the action fails with the tags it tried if neither exists.
 2. **Detects the runner platform** — supports `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`.
 3. **Downloads the binary** — from `https://github.com/layer87-labs/relctl/releases/download/<version>/`.
 4. **Verifies the SHA-256 checksum** — against the `sha256sum.txt` file published with every release. Fails fast if the checksum does not match.
