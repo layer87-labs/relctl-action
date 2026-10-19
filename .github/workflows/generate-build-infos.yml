@@ -73,8 +73,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Pinned to an immutable commit: a reusable workflow cannot resolve its own
+      # repository at the caller's ref (github.job_workflow_sha is empty in the job),
+      # and a moving branch would change the behaviour of already-pinned callers.
+      # Bump together with a new release of this repository.
       - name: Setup relctl
-        uses: layer87-labs/relctl-action@main
+        uses: layer87-labs/relctl-action@531351fe9ebd7c2461527d49a250de14461acd65 # v1.2.0
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
