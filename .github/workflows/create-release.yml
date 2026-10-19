@@ -65,9 +65,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Pinned to an immutable commit: a reusable workflow cannot resolve its own
+      # repository at the caller's ref (github.job_workflow_sha is empty in the job),
+      # and a moving branch would change the behaviour of already-pinned callers.
+      # Bump together with a new release of this repository.
       - name: Setup relctl and collect PR infos (semver)
         if: inputs.version-scheme == 'semver'
-        uses: layer87-labs/relctl-action@main
+        uses: layer87-labs/relctl-action@531351fe9ebd7c2461527d49a250de14461acd65 # v1.2.0
         id: pr-info
         with:
           github-token: ${{ secrets.token }}
@@ -76,7 +80,7 @@ jobs:
 
       - name: Create release (semver)
         if: inputs.version-scheme == 'semver'
-        uses: layer87-labs/relctl-action@main
+        uses: layer87-labs/relctl-action@531351fe9ebd7c2461527d49a250de14461acd65 # v1.2.0
         id: create-release
         with:
           github-token: ${{ secrets.token }}
@@ -85,7 +89,7 @@ jobs:
 
       - name: Create release (calver)
         if: inputs.version-scheme == 'calver'
-        uses: layer87-labs/relctl-action@main
+        uses: layer87-labs/relctl-action@531351fe9ebd7c2461527d49a250de14461acd65 # v1.2.0
         id: create-release-calver
         with:
           github-token: ${{ secrets.token }}
@@ -94,7 +98,7 @@ jobs:
 
       - name: Create release (conventional-commits)
         if: inputs.version-scheme == 'conventional-commits'
-        uses: layer87-labs/relctl-action@main
+        uses: layer87-labs/relctl-action@531351fe9ebd7c2461527d49a250de14461acd65 # v1.2.0
         id: create-release-conventional-commits
         with:
           github-token: ${{ secrets.token }}
