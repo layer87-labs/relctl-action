@@ -55,6 +55,8 @@ The `run` input is optional. When set, relctl is installed and the command is ex
 
 ## Reusable Workflows
 
+Callers of the reusable workflows get the action version that the workflow pins, which is the previous release (a commit cannot contain its own hash).
+
 ### `generate-build-infos` — Collect PR metadata
 
 Drop-in replacement for `fullstack-devops/git-workflows/.github/workflows/generate-build-infos.yml`.
