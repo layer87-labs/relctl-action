@@ -9,7 +9,7 @@ on:
         required: false
         type: string
       version-scheme:
-        description: "Version scheme to use ('semver', 'calver' or 'conventional-commits')"
+        description: "Version scheme to use ('semver', 'calver', 'conventional-commits' or 'changelog')"
         default: "semver"
         required: false
         type: string
@@ -51,14 +51,14 @@ jobs:
   generate_infos:
     runs-on: ${{ inputs.runner }}
     outputs:
-      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID || steps.create-release-calver.outputs.RELCTL_RELEASE_ID || steps.create-release-conventional-commits.outputs.RELCTL_RELEASE_ID }}
+      release-id: ${{ steps.create-release.outputs.RELCTL_RELEASE_ID || steps.create-release-calver.outputs.RELCTL_RELEASE_ID || steps.create-release-conventional-commits.outputs.RELCTL_RELEASE_ID || steps.create-release-changelog.outputs.RELCTL_RELEASE_ID }}
       sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
       sha-short: ${{ steps.pr-info.outputs.RELCTL_PR_SHA_SHORT }}
-      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER || steps.create-release-calver.outputs.RELCTL_OWNER || steps.create-release-conventional-commits.outputs.RELCTL_OWNER }}
-      repo: ${{ steps.pr-info.outputs.RELCTL_REPO || steps.create-release-calver.outputs.RELCTL_REPO || steps.create-release-conventional-commits.outputs.RELCTL_REPO }}
-      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_VERSION }}
-      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION || steps.create-release-calver.outputs.RELCTL_LATEST_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_LATEST_VERSION }}
-      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_VERSION }}
+      owner: ${{ steps.pr-info.outputs.RELCTL_OWNER || steps.create-release-calver.outputs.RELCTL_OWNER || steps.create-release-conventional-commits.outputs.RELCTL_OWNER || steps.create-release-changelog.outputs.RELCTL_OWNER }}
+      repo: ${{ steps.pr-info.outputs.RELCTL_REPO || steps.create-release-calver.outputs.RELCTL_REPO || steps.create-release-conventional-commits.outputs.RELCTL_REPO || steps.create-release-changelog.outputs.RELCTL_REPO }}
+      version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_VERSION || steps.create-release-changelog.outputs.RELCTL_VERSION }}
+      latest-version: ${{ steps.pr-info.outputs.RELCTL_LATEST_VERSION || steps.create-release-calver.outputs.RELCTL_LATEST_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_LATEST_VERSION || steps.create-release-changelog.outputs.RELCTL_LATEST_VERSION }}
+      next-version: ${{ steps.pr-info.outputs.RELCTL_NEXT_VERSION || steps.create-release-calver.outputs.RELCTL_VERSION || steps.create-release-conventional-commits.outputs.RELCTL_VERSION || steps.create-release-changelog.outputs.RELCTL_VERSION }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v6
@@ -105,3 +105,14 @@ jobs:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
           run: relctl release create --version-scheme conventional-commits >> $GITHUB_STEP_SUMMARY
+
+      # The version is read from the topmost dated heading of CHANGELOG.md.
+      # Idempotent: a version that already has a release or tag is not released again.
+      - name: Create release (changelog)
+        if: inputs.version-scheme == 'changelog'
+        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        id: create-release-changelog
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+          run: relctl release create --version-scheme changelog >> $GITHUB_STEP_SUMMARY
