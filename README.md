@@ -69,6 +69,8 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+The calling workflow must grant `contents: read` and `pull-requests: write`; relctl needs the latter to post its help comment on the pull request. A reusable workflow cannot exceed the permissions of its caller, so a caller granting only `pull-requests: read` makes the run fail at startup. Pull requests from forks get a read-only token and cannot receive the comment.
+
 #### Inputs
 
 | Input            | Required | Default                                   | Description                              |
