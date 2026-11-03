@@ -92,6 +92,6 @@ jobs:
 
       - name: Collect PR infos
         id: pr-info
-        run: relctl pr info -n ${{ inputs.prnumber }} > $GITHUB_STEP_SUMMARY
+        run: relctl pr info -n "${{ inputs.prnumber }}" > "$GITHUB_STEP_SUMMARY"
         env:
           GITHUB_TOKEN: ${{ secrets.token }}

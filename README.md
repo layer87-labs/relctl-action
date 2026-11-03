@@ -8,7 +8,9 @@ GitHub Action and reusable workflows for [`relctl`](https://github.com/layer87-l
 Provides:
 - **Composite action** — installs the `relctl` binary (no Node.js or Docker required)
 - **Reusable workflow** `generate-build-infos` — collects PR metadata (version, SHA, branch, …)
-- **Reusable workflow** `create-release` — creates a GitHub release from a merged PR
+- **Reusable workflow** `create-release` — creates a GitHub release (or a release candidate) from a merged PR
+- **Reusable workflow** `release-gate` — checks a release pull request (reviewed-release flow)
+- **Reusable workflow** `release-forward` — brings the production branch back into the development branch
 
 ---
 
@@ -113,19 +115,134 @@ jobs:
 | ---------------- | -------- | ---------- | ------------------------- |
 | `relctl-version` | no       | `"latest"` | relctl version to install |
 | `version-scheme` | no       | `"semver"` | Version scheme to use: `"semver"`, `"calver"`, `"conventional-commits"` or `"changelog"` (needs relctl 2.6.0 or newer) |
+| `runner`         | no       | `"ubuntu-latest"` | GitHub Actions runner label |
+| `prerelease`     | no       | `false`    | Create a release candidate `X.Y.Z-rc.N` (GitHub prerelease) with `relctl release create --prerelease`; needs relctl 2.7.0 or newer |
+
+The calling workflow must grant `contents: write` (and `pull-requests: read`, which relctl uses to resolve the merged pull request). A reusable workflow cannot exceed the permissions of its caller.
+
+```yaml
+# release candidate on every push to dev, release on main
+jobs:
+  release:
+    permissions:
+      contents: write
+      pull-requests: read
+    uses: layer87-labs/relctl-action/.github/workflows/create-release.yml@v1
+    with:
+      version-scheme: changelog
+      prerelease: ${{ github.ref_name == 'dev' }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+```
 
 #### Outputs
 
 | Output           | Description                              |
 | ---------------- | ---------------------------------------- |
-| `release-id`     | ID of the created GitHub release         |
+| `release-id`     | ID of the created GitHub release; empty when nothing was created |
 | `sha`            | SHA of the merge commit                  |
 | `sha-short`      | Short SHA of the merge commit            |
 | `owner`          | Repository owner                         |
 | `repo`           | Repository name                          |
-| `version`        | Released version                         |
+| `version`        | Released version (the candidate version with `prerelease`); empty when nothing was created |
 | `latest-version` | Latest released version (before release) |
 | `next-version`   | The version that was released            |
+
+#### Gating later jobs
+
+`release-id` is empty when nothing was released: relctl 2.10.2 and newer export no release id for a release that is already published, or for a candidate of a version that is already released. Build and publish jobs must therefore be guarded:
+
+```yaml
+jobs:
+  release:
+    uses: layer87-labs/relctl-action/.github/workflows/create-release.yml@v1
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: [release]
+    if: needs.release.outputs.release-id != ''
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "building ${{ needs.release.outputs.version }}"
+```
+
+---
+
+### `release-gate` — Check a release pull request
+
+For the reviewed-release flow: a required check for the pull request that releases (for example `dev` to `main`). It runs `relctl release gate`, which verifies that the topmost `CHANGELOG.md` heading is dated and has notes, that its version is not released yet and (by default) that a release candidate points to exactly the checked commit.
+
+```yaml
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    if: github.head_ref == 'dev'
+    uses: layer87-labs/relctl-action/.github/workflows/release-gate.yml@v1
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Required caller permissions: `contents: read`.
+
+| Input               | Required | Default                | Description |
+| ------------------- | -------- | ---------------------- | ----------- |
+| `relctl-version`    | no       | `"latest"`             | relctl version to install |
+| `runner`            | no       | `"ubuntu-latest"`      | GitHub Actions runner label |
+| `require-candidate` | no       | `true`                 | Require a release candidate tag on the checked commit (`--require-candidate=false` when `false`) |
+| `sha`               | no       | pull request head SHA  | Commit to check out and gate |
+
+---
+
+### `release-forward` — Bring the production branch back into the development branch
+
+Runs `relctl release forward` after a release: if the development branch already contains the production branch nothing happens, if it is an ancestor it is fast-forwarded, otherwise a pull request is opened. Merge that pull request with a merge commit, not a squash.
+
+```yaml
+on:
+  push:
+    branches: [main]
+
+jobs:
+  forward:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: layer87-labs/relctl-action/.github/workflows/release-forward.yml@v1
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Required caller permissions: `contents: write` and `pull-requests: write`. A fast-forward push to a protected branch needs a token that may push there; otherwise a pull request is opened.
+
+| Input            | Required | Default           | Description |
+| ---------------- | -------- | ----------------- | ----------- |
+| `relctl-version` | no       | `"latest"`        | relctl version to install |
+| `runner`         | no       | `"ubuntu-latest"` | GitHub Actions runner label |
+| `from`           | no       | from `.relctl.yaml` | Branch to bring forward (`--from`, only passed when set) |
+| `to`             | no       | from `.relctl.yaml` | Branch that receives it (`--to`, only passed when set) |
+
+| Output         | Description |
+| -------------- | ----------- |
+| `result`       | `nothing`, `fast-forward` or `pull-request` |
+| `pull-request` | Number of the opened pull request; empty unless `result` is `pull-request` |
+
+---
+
+## Pinning relctl
+
+`relctl-version: "latest"` resolves to the newest relctl release on every run. For reproducible pipelines pin an exact version in every workflow and action call:
+
+```yaml
+    with:
+      relctl-version: "2.10.2"
+```
 
 ---
 
