@@ -49,6 +49,6 @@ jobs:
           relctl-version: ${{ inputs.relctl-version }}
 
       - name: Release gate
-        run: relctl release gate --sha "${GATE_SHA}" ${{ inputs.require-candidate && '' || '--require-candidate=false' }} >> "$GITHUB_STEP_SUMMARY"
+        run: relctl release gate --sha "${GATE_SHA}" ${{ !inputs.require-candidate && '--require-candidate=false' || '' }} >> "$GITHUB_STEP_SUMMARY"
         env:
           GITHUB_TOKEN: ${{ secrets.token }}
