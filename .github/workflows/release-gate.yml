@@ -1,0 +1,54 @@
+name: Release gate
+
+on:
+  workflow_call:
+    inputs:
+      relctl-version:
+        description: "relctl version to install (e.g. '2.10.2' or 'latest')"
+        default: "latest"
+        required: false
+        type: string
+      runner:
+        description: "GitHub Actions runner label"
+        default: "ubuntu-latest"
+        required: false
+        type: string
+      require-candidate:
+        description: "Require a release candidate tag on the checked commit"
+        default: true
+        required: false
+        type: boolean
+      sha:
+        description: "Commit to check (default: the pull request head commit)"
+        default: ""
+        required: false
+        type: string
+    secrets:
+      token:
+        required: true
+
+jobs:
+  gate:
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+    env:
+      GATE_SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          ref: ${{ env.GATE_SHA }}
+
+      # Pinned like the other workflows in this repository; see create-release.yml.
+      - name: Setup relctl
+        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+
+      - name: Release gate
+        run: relctl release gate --sha "${GATE_SHA}" ${{ inputs.require-candidate && '' || '--require-candidate=false' }} >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.token }}

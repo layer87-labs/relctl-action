@@ -1,0 +1,73 @@
+name: Release forward
+
+on:
+  workflow_call:
+    inputs:
+      relctl-version:
+        description: "relctl version to install (e.g. '2.10.2' or 'latest')"
+        default: "latest"
+        required: false
+        type: string
+      runner:
+        description: "GitHub Actions runner label"
+        default: "ubuntu-latest"
+        required: false
+        type: string
+      from:
+        description: "Branch to bring forward (default: production_branch from .relctl.yaml)"
+        default: ""
+        required: false
+        type: string
+      to:
+        description: "Branch that receives it (default: development_branch from .relctl.yaml)"
+        default: ""
+        required: false
+        type: string
+    secrets:
+      token:
+        required: true
+    outputs:
+      result:
+        description: "What happened: nothing, fast-forward or pull-request"
+        value: ${{ jobs.forward.outputs.result }}
+      pull-request:
+        description: "Number of the opened pull request; empty unless result is pull-request"
+        value: ${{ jobs.forward.outputs.pull-request }}
+
+jobs:
+  forward:
+    runs-on: ${{ inputs.runner }}
+    # The caller must grant at least the same permissions.
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      result: ${{ steps.forward.outputs.RELCTL_FORWARD_RESULT }}
+      pull-request: ${{ steps.forward.outputs.RELCTL_FORWARD_PR }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      # Pinned like the other workflows in this repository; see create-release.yml.
+      - name: Setup relctl
+        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        with:
+          github-token: ${{ secrets.token }}
+          relctl-version: ${{ inputs.relctl-version }}
+
+      # relctl writes RELCTL_FORWARD_RESULT and RELCTL_FORWARD_PR to GITHUB_OUTPUT itself,
+      # so a plain run step is enough (the setup action does not declare these outputs).
+      # RELCTL_FORWARD_PR is only exported when a pull request was opened.
+      - name: Forward
+        id: forward
+        run: |
+          ARGS=()
+          [ -n "${FROM_BRANCH}" ] && ARGS+=(--from "${FROM_BRANCH}")
+          [ -n "${TO_BRANCH}" ] && ARGS+=(--to "${TO_BRANCH}")
+          relctl release forward "${ARGS[@]}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.token }}
+          FROM_BRANCH: ${{ inputs.from }}
+          TO_BRANCH: ${{ inputs.to }}

@@ -18,12 +18,17 @@ on:
         default: "ubuntu-latest"
         required: false
         type: string
+      prerelease:
+        description: "Create a release candidate (X.Y.Z-rc.N, GitHub prerelease) instead of the release; needs relctl 2.7.0 or newer"
+        default: false
+        required: false
+        type: boolean
     secrets:
       token:
         required: true
     outputs:
       release-id:
-        description: "ID of the created GitHub release"
+        description: "ID of the created GitHub release; empty when nothing was created"
         value: ${{ jobs.generate_infos.outputs.release-id }}
       sha:
         description: "SHA of the merge commit"
@@ -38,7 +43,7 @@ on:
         description: "Repository name"
         value: ${{ jobs.generate_infos.outputs.repo }}
       version:
-        description: "Released version"
+        description: "Released version (a candidate version with prerelease); empty when nothing was created"
         value: ${{ jobs.generate_infos.outputs.version }}
       latest-version:
         description: "Latest released version (before this release)"
@@ -86,7 +91,7 @@ jobs:
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
-          run: relctl release create --merge-sha ${{ github.sha }} >> $GITHUB_STEP_SUMMARY
+          run: relctl release create --merge-sha ${{ github.sha }} ${{ inputs.prerelease && '--prerelease' || '' }} >> $GITHUB_STEP_SUMMARY
 
       - name: Create release (calver)
         if: inputs.version-scheme == 'calver'
@@ -95,7 +100,7 @@ jobs:
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
-          run: relctl release create --version-scheme calver >> $GITHUB_STEP_SUMMARY
+          run: relctl release create --version-scheme calver ${{ inputs.prerelease && '--prerelease' || '' }} >> $GITHUB_STEP_SUMMARY
 
       - name: Create release (conventional-commits)
         if: inputs.version-scheme == 'conventional-commits'
@@ -104,7 +109,7 @@ jobs:
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
-          run: relctl release create --version-scheme conventional-commits >> $GITHUB_STEP_SUMMARY
+          run: relctl release create --version-scheme conventional-commits ${{ inputs.prerelease && '--prerelease' || '' }} >> $GITHUB_STEP_SUMMARY
 
       # The version is read from the topmost dated heading of CHANGELOG.md.
       # Idempotent: a version that already has a release or tag is not released again.
@@ -115,4 +120,4 @@ jobs:
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}
-          run: relctl release create --version-scheme changelog >> $GITHUB_STEP_SUMMARY
+          run: relctl release create --version-scheme changelog ${{ inputs.prerelease && '--prerelease' || '' }} >> $GITHUB_STEP_SUMMARY
