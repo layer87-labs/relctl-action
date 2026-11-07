@@ -56,12 +56,12 @@ on:
 jobs:
   generate_infos:
     runs-on: ${{ inputs.runner }}
-    # pull-requests: write is required for relctl to post its help comment.
-    # A reusable workflow cannot exceed the caller's permissions, so the
-    # calling workflow must grant at least the same.
-    permissions:
-      contents: read
-      pull-requests: write
+    # No job-level permissions on purpose: the job inherits the caller's token
+    # permissions. A reusable workflow cannot request more than its caller
+    # grants, so asking for pull-requests: write made callers that grant only
+    # read fail at startup. relctl only needs read access; the help comment on
+    # the pull request is posted when the caller grants pull-requests: write
+    # and is skipped with a warning otherwise.
     outputs:
       pr: ${{ steps.pr-info.outputs.RELCTL_PR }}
       sha: ${{ steps.pr-info.outputs.RELCTL_PR_SHA }}
