@@ -69,7 +69,7 @@ runs:
         INPUT_VERSION: ${{ inputs.relctl-version }}
       run: |
         if [ "${INPUT_VERSION}" = "latest" ]; then
-          VERSION=$(curl -fsSL \
+          VERSION=$(curl -fsSL --retry 5 --retry-delay 20 --retry-max-time 150 --connect-timeout 15 --max-time 120 \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/layer87-labs/relctl/releases/latest" \
@@ -83,7 +83,7 @@ runs:
           TRIED=""
           for CANDIDATE in "${BARE}" "v${BARE}"; do
             TRIED="${TRIED:+${TRIED}, }${CANDIDATE}"
-            STATUS=$(curl -sS -o /dev/null -w '%{http_code}' \
+            STATUS=$(curl -sS --retry 5 --retry-delay 20 --retry-max-time 150 --connect-timeout 15 --max-time 120 -o /dev/null -w '%{http_code}' \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/layer87-labs/relctl/releases/tags/${CANDIDATE}") || STATUS="000"
@@ -147,13 +147,13 @@ runs:
         mkdir -p "${INSTALL_DIR}"
 
         echo "Downloading ${BINARY_NAME} from ${BASE_URL} ..."
-        curl -fsSL \
+        curl -fsSL --retry 5 --retry-delay 20 --retry-max-time 150 --connect-timeout 15 --max-time 120 \
           -H "Authorization: Bearer ${GH_TOKEN}" \
           -o "${INSTALL_DIR}/${BINARY_NAME}" \
           "${BASE_URL}/${BINARY_NAME}"
 
         echo "Downloading checksum file ..."
-        curl -fsSL \
+        curl -fsSL --retry 5 --retry-delay 20 --retry-max-time 150 --connect-timeout 15 --max-time 120 \
           -H "Authorization: Bearer ${GH_TOKEN}" \
           -o "${INSTALL_DIR}/${CHECKSUM_FILE}" \
           "${BASE_URL}/${CHECKSUM_FILE}"
