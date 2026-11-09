@@ -43,7 +43,7 @@ jobs:
 
       # Pinned like the other workflows in this repository; see create-release.yml.
       - name: Setup relctl
-        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        uses: layer87-labs/relctl-action@c8acb7a7cca926810baae41961b3aa6be595127e # main, download retry (#12)
         with:
           github-token: ${{ secrets.token }}
           relctl-version: ${{ inputs.relctl-version }}

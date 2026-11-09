@@ -77,7 +77,7 @@ jobs:
       # release; bump it together with a new release of this repository.
       - name: Setup relctl and collect PR infos (semver)
         if: inputs.version-scheme == 'semver'
-        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        uses: layer87-labs/relctl-action@c8acb7a7cca926810baae41961b3aa6be595127e # main, download retry (#12)
         id: pr-info
         with:
           github-token: ${{ secrets.token }}
@@ -86,7 +86,7 @@ jobs:
 
       - name: Create release (semver)
         if: inputs.version-scheme == 'semver'
-        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        uses: layer87-labs/relctl-action@c8acb7a7cca926810baae41961b3aa6be595127e # main, download retry (#12)
         id: create-release
         with:
           github-token: ${{ secrets.token }}
@@ -95,7 +95,7 @@ jobs:
 
       - name: Create release (calver)
         if: inputs.version-scheme == 'calver'
-        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        uses: layer87-labs/relctl-action@c8acb7a7cca926810baae41961b3aa6be595127e # main, download retry (#12)
         id: create-release-calver
         with:
           github-token: ${{ secrets.token }}
@@ -104,7 +104,7 @@ jobs:
 
       - name: Create release (conventional-commits)
         if: inputs.version-scheme == 'conventional-commits'
-        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        uses: layer87-labs/relctl-action@c8acb7a7cca926810baae41961b3aa6be595127e # main, download retry (#12)
         id: create-release-conventional-commits
         with:
           github-token: ${{ secrets.token }}
@@ -115,7 +115,7 @@ jobs:
       # Idempotent: a version that already has a release or tag is not released again.
       - name: Create release (changelog)
         if: inputs.version-scheme == 'changelog'
-        uses: layer87-labs/relctl-action@d51f0182ee3796ffba7cf897f5385cf12277757d # v1.2.2
+        uses: layer87-labs/relctl-action@c8acb7a7cca926810baae41961b3aa6be595127e # main, download retry (#12)
         id: create-release-changelog
         with:
           github-token: ${{ secrets.token }}
